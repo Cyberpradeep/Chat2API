@@ -5,10 +5,15 @@ Tests that the local ChatGPT Modular Engine works as a drop-in replacement for O
 Requirements:
     pip install openai
 Usage:
-    python test_openai_sdk.py
+    python tests/test_openai_sdk.py
 """
 
 import sys
+from pathlib import Path
+
+# Ensure root workspace directory is in sys.path for direct script execution
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from config.settings import settings
 
 try:

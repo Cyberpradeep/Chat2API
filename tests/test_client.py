@@ -3,14 +3,19 @@ Interactive Test Client for ChatGPT Modular API
 Supports testing prompt execution, Think mode, Web search, Deep research, and file attachments.
 
 Usage:
-    python test_client.py "Your prompt here"
-    python test_client.py "Solve this math problem" --think
-    python test_client.py "Latest news about quantum computing" --search
-    python test_client.py "Describe this image" --file "path/to/image.png"
+    python tests/test_client.py "Your prompt here"
+    python tests/test_client.py "Solve this math problem" --think
+    python tests/test_client.py "Latest news about quantum computing" --search
+    python tests/test_client.py "Describe this image" --file "path/to/image.png"
 """
 
 import os
 import sys
+from pathlib import Path
+
+# Ensure root workspace directory is in sys.path for direct script execution
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import argparse
 import httpx
 from config.settings import settings

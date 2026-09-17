@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 from providers.base_provider import BaseProvider
 from core.browser_manager import BrowserManager
 from core.file_uploader import FileUploader
+from core import prompt_compiler
 from config import selectors
 from . import toggles
 from . import extractor
@@ -41,6 +42,8 @@ class ChatGPTProvider(BaseProvider):
     async def send_prompt(
         self,
         prompt: str,
+        system_prompt: Optional[str] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
         think: bool = False,
         web_search: bool = False,
         deep_research: bool = False,
@@ -49,10 +52,21 @@ class ChatGPTProvider(BaseProvider):
         timeout_seconds: int = 180
     ) -> Dict[str, Any]:
         """
-        Sends prompt with selected toggles and file attachments.
+        Sends prompt with optional system instructions, tool definitions,
+        selected toggles, and file attachments.
         """
         async with self.browser_mgr.lock:
             page = await self.browser_mgr.initialize()
+
+            # Compile composite prompt if system prompt or tools are specified
+            final_prompt_text = prompt
+            if system_prompt or tools:
+                compiled_text, _ = prompt_compiler.compile_messages(
+                    messages=[{"role": "user", "content": prompt}],
+                    system_prompt=system_prompt,
+                    tools=tools
+                )
+                final_prompt_text = compiled_text
 
             if new_chat:
                 logger.info("Resetting conversation before sending prompt...")
@@ -109,11 +123,11 @@ class ChatGPTProvider(BaseProvider):
             await asyncio.sleep(0.2)
 
             try:
-                await prompt_locator.fill(prompt)
+                await prompt_locator.fill(final_prompt_text)
             except Exception:
                 await page.keyboard.press("Control+A")
                 await page.keyboard.press("Backspace")
-                await page.keyboard.insert_text(prompt)
+                await page.keyboard.insert_text(final_prompt_text)
 
             await asyncio.sleep(0.5)
 
@@ -138,10 +152,16 @@ class ChatGPTProvider(BaseProvider):
             logger.info("Waiting for generation to finish...")
             extracted = await extractor.wait_for_completion(page, initial_count, timeout_seconds)
 
+            # Check if ChatGPT called tools
+            tool_calls = prompt_compiler.parse_tool_calls(extracted["content"])
+            finish_reason = "tool_calls" if tool_calls else "stop"
+
             return {
                 "prompt": prompt,
-                "response": extracted["content"],
+                "response": None if tool_calls else extracted["content"],
+                "raw_content": extracted["content"],
                 "thought_process": extracted.get("thought_process"),
+                "tool_calls": tool_calls,
                 "sources": extracted.get("sources", []),
                 "toggles": {
                     "think": think,
@@ -149,6 +169,7 @@ class ChatGPTProvider(BaseProvider):
                     "deep_research": deep_research,
                     "files_count": len(files) if files else 0
                 },
+                "finish_reason": finish_reason,
                 "status": "success"
             }
 

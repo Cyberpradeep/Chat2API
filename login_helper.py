@@ -66,7 +66,7 @@ def main():
         print("Saving session data to user_data directory...")
         context.close()
         print("Session successfully saved! You can now start the API server with:")
-        print("  python main.py")
+        print("  python run.py")
 
 if __name__ == "__main__":
     main()

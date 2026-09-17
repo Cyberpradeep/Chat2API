@@ -16,6 +16,8 @@ class BaseProvider(ABC):
     async def send_prompt(
         self,
         prompt: str,
+        system_prompt: Optional[str] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
         think: bool = False,
         web_search: bool = False,
         deep_research: bool = False,
@@ -24,8 +26,8 @@ class BaseProvider(ABC):
         timeout_seconds: int = 180
     ) -> Dict[str, Any]:
         """
-        Sends a prompt with feature toggles and optional file attachments,
-        and returns the structured response.
+        Sends a prompt with optional system instructions, tool definitions,
+        feature toggles, and file attachments.
         """
         pass
 

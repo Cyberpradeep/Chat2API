@@ -37,6 +37,7 @@ PLUS_BUTTON = [
     'button[aria-label="Create, upload, search and more"]',
     'button[aria-label*="Attach"]',
     'button[aria-label*="Add"]',
+    'button:has-text("+")',
     'form button:has(svg):not([data-testid="send-button"]):not([data-testid="stop-button"])'
 ]
 
@@ -44,18 +45,23 @@ PLUS_BUTTON = [
 WEB_SEARCH_ITEM = [
     'div[role="menuitem"]:has-text("Web search")',
     'button:has-text("Web search")',
+    'div:has-text("Web search"):not(:has(div))',
+    'span:has-text("Web search")',
     '[data-testid="web-search-item"]'
 ]
 
 DEEP_RESEARCH_ITEM = [
     'div[role="menuitem"]:has-text("Deep research")',
     'button:has-text("Deep research")',
+    'div:has-text("Deep research"):not(:has(div))',
+    'span:has-text("Deep research")',
     '[data-testid="deep-research-item"]'
 ]
 
 ADD_FILES_ITEM = [
     'div[role="menuitem"]:has-text("Add photos & files")',
-    'button:has-text("Add photos & files")'
+    'button:has-text("Add photos & files")',
+    'div:has-text("Add photos & files"):not(:has(div))'
 ]
 
 # Hidden File Input for attachments
