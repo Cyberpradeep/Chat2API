@@ -1,0 +1,32 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Sensitive configuration & local environment
+.env
+*.env
+!.env.example
+
+# Browser automation data and profiles
+user_data/
+temp_uploads/
+
+# Logs
+*.log
+
+# IDE & Editor settings
+.vscode/
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db
