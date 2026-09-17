@@ -1,4 +1,4 @@
-# ChatGPT Web-to-API Bridge (v2.0)
+# Chat2API: Free ChatGPT-to-OpenAI API Bridge (v2.0)
 
 [![Status](https://img.shields.io/badge/Status-Operational-green.svg)]()
 [![API Spec](https://img.shields.io/badge/API-OpenAI%20v1%20Compatible-blue.svg)]()
@@ -6,35 +6,98 @@
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-purple.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)]()
 
-A lightweight, local REST API and drop-in OpenAI-compatible bridge for the ChatGPT web client. Built with Playwright, FastAPI, and an extensible provider abstraction.
+> **Quick Summary**  
+> Chat2API turns your personal ChatGPT web subscription into a **100% free, unlimited, local OpenAI-compatible API key** (`http://127.0.0.1:8088/v1`).  
+> Point any Python script, AI agent framework (LangChain, AutoGen, CrewAI), or IDE assistant directly to localhost and execute prompts with zero per-token cost, full privacy, system prompt persistence, and structured tool calling.
 
 ---
 
-## Overview
+## What Is This?
 
-ChatGPT Web-to-API Bridge exposes standard OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/models`) backed by your existing ChatGPT web subscription. All execution is handled entirely on your local machine using an automated, persistent Chromium browser context.
+When building AI apps, developers typically face two obstacles:
+1. **Paid OpenAI API keys** incur recurring per-token fees that escalate quickly during multi-turn agent loops or large document processing.
+2. **ChatGPT web accounts** offer unlimited usage, but do not provide an API key for custom code or third-party agent tools.
 
-Unlike cloud-based relay solutions:
-- **No Third-Party Relays**: All traffic remains strictly on `127.0.0.1`.
-- **Full Agentic Capabilities**: Supports system instructions (`role: "system"`) and structured tool calling (`tools=[...]`), enabling multi-turn autonomous AI agent loops.
-- **Modern ChatGPT Feature Support**: Access Think Mode (deep reasoning), live Web Search, Deep Research, and multimodal file/image attachments.
-- **Anti-Throttling Architecture**: Built-in Chromium flags prevent execution pauses when the browser window is minimized or running in the background.
+**Chat2API bridges this gap.** It runs a persistent, automated Playwright Chromium engine on your machine. When your code sends an OpenAI request to `http://127.0.0.1:8088/v1`, Chat2API drives your local ChatGPT session in the background and returns structured, standardized OpenAI responses.
 
 ---
 
-## Architectural Comparison
+## Visual Architecture & Flow
 
-| Capability | Cloud Relays (e.g., ApiBeam) | ChatGPT Web-to-API Bridge (v2.0) |
-| :--- | :--- | :--- |
-| **Data Privacy** | Forwarded through third-party servers | 100% Local (`127.0.0.1`) |
-| **System Prompts (`role: "system"`)** | Not supported or ignored | Supported (framed and persona-enforced) |
-| **Tool Calling (`tools=[...]`)** | Not supported | Supported (returns structured OpenAI JSON) |
-| **Multi-Turn Agent Workflows** | Not supported | Supported (battle-tested with official OpenAI SDK) |
-| **Interface Compatibility** | Fragile against UI changes | Resilient multi-tier selector architecture |
-| **Reasoning / Think Mode** | Not exposed | Supported via parameter toggle |
-| **Multimodal Vision & Files** | Rarely supported | Supported (local files, PDFs, base64 images) |
-| **Background Execution** | Freezes when minimized | Unthrottled via OS-level Chromium flags |
-| **Operational Cost** | Subscription / token-based | Free and open source |
+```
++-------------------------------------------------------------------------------+
+|                             YOUR LOCAL MACHINE                                |
+|                                                                               |
+|  +--------------------------+                   +--------------------------+  |
+|  |   Your Application /     |                   |    Chat2API Bridge       |  |
+|  |   AI Agent Framework     |                   |    (FastAPI - Port 8088) |  |
+|  |                          |                   |                          |  |
+|  | - Python OpenAI SDK      | === HTTP /v1 ===> | - Standard /v1 Endpoints |  |
+|  | - LangChain / AutoGen    | <== JSON Spec === | - System Prompt Framing  |  |
+|  | - CrewAI / Custom Agents |                   | - Tool Call JSON Parser  |  |
+|  | - Cursor / Continue IDE  |                   +------------+-------------+  |
+|  +--------------------------+                                |                |
+|                                                     Playwright Control        |
+|                                                              v                |
+|                                                 +--------------------------+  |
+|                                                 |   Automated Chromium     |  |
+|                                                 |   (Session: ./user_data) |  |
+|                                                 |                          |  |
+|                                                 | - Unthrottled Background |  |
+|                                                 | - Think Mode Controller  |  |
+|                                                 | - Web Search & Uploads   |  |
+|                                                 +------------+-------------+  |
++--------------------------------------------------------------|----------------+
+                                                               | Direct TLS Web
+                                                               v Session (HTTPS)
+                                                  +--------------------------+
+                                                  |    ChatGPT Web Service   |
+                                                  |    (chatgpt.com)         |
+                                                  +--------------------------+
+```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as Your App / AI Agent
+    participant Bridge as Chat2API (/v1 Server)
+    participant Browser as Local Chromium Engine
+    participant Web as ChatGPT Web
+
+    App->>Bridge: POST /v1/chat/completions (messages, tools)
+    Bridge->>Bridge: Compile system prompts & format tool schemas
+    Bridge->>Browser: Inject prompt & trigger toggles (Think/Search)
+    Browser->>Web: Transmit via authenticated session
+    Web-->>Browser: Stream response text & tokens
+    Browser->>Bridge: Capture completion & detect stop state
+    Bridge->>Bridge: Parse structured tool_calls or markdown text
+    Bridge-->>App: Return OpenAI-compliant JSON response
+```
+
+---
+
+## What Can You Do With This?
+
+- **Run Autonomous Multi-Turn AI Agents**: Connect LangChain, CrewAI, or AutoGen. Agents can query tools, receive observations, and run multi-step execution loops without API token costs.
+- **Drop-in IDE Coding Assistant**: Configure tools like Cursor, Continue.dev, or Roo Code with `base_url="http://127.0.0.1:8088/v1"` for unlimited coding assistance.
+- **Access Reasoning & Think Mode**: Enable deep reasoning dynamically via request parameters for complex logic and math problems.
+- **Multimodal Image & Document Analysis**: Attach local PDFs, photos, or base64 vision images directly to your completion requests.
+- **Process High-Volume Pipelines**: Run bulk document summarization, data extraction, and scraping workflows without monitoring token budgets.
+
+---
+
+## Key Advantages at a Glance
+
+| Feature | Official Paid API | Cloud Relays (e.g. ApiBeam) | Chat2API (v2.0) |
+| :--- | :--- | :--- | :--- |
+| **Token Cost** | Pay-per-token ($$$) | Subscription fee | **$0 (Uses your web account)** |
+| **Data Privacy** | Cloud hosted | Routed through third party | **100% Local (127.0.0.1)** |
+| **System Prompts** | Supported | Frequently stripped/ignored | **Supported (Framed & persisted)** |
+| **Structured Tools** | Supported | Not supported | **Supported (OpenAI tool_calls)** |
+| **Multi-Turn Loops** | Supported | Fails on state loss | **Supported (Agent-ready)** |
+| **Reasoning Mode** | Separate paid models | Not accessible | **Supported (Think toggle)** |
+| **Background Run** | Cloud API | Remote server | **Unthrottled Chromium flags** |
+| **Setup Complexity** | API key setup | Cloud proxy setup | **1-click local launcher** |
 
 ---
 
@@ -44,7 +107,7 @@ Unlike cloud-based relay solutions:
 d:\chatgpt_api\
 ├── config/
 │   ├── settings.py              # Environment configuration loader (.env)
-│   └── selectors.py             # Multi-tier DOM selectors for the ChatGPT UI
+│   └── selectors.py             # Multi-tier DOM selectors for ChatGPT UI
 ├── core/
 │   ├── browser_manager.py       # Persistent Chromium lifecycle and stealth flags
 │   ├── prompt_compiler.py       # System prompt compiler and tool-call parser
@@ -75,15 +138,10 @@ d:\chatgpt_api\
 
 ---
 
-## Prerequisites and Installation
+## Quickstart Guide
 
-### 1. Requirements
-- Python 3.10 or higher
-- Google Chrome or Chromium
-- An active ChatGPT account
-
-### 2. Setup Environment
-Clone the repository and install dependencies:
+### 1. Installation
+Install requirements and the Playwright Chromium browser:
 
 ```powershell
 pip install -r requirements.txt
@@ -92,39 +150,37 @@ playwright install chromium
 
 ---
 
-## Quickstart
-
-### Step 1: Authenticate Session (One-Time)
-Run the authentication helper to log into ChatGPT:
+### 2. One-Time Authentication
+Authenticate your ChatGPT session once:
 
 ```powershell
 python login_helper.py
 ```
 
 1. A browser window opens navigating to `https://chatgpt.com`.
-2. Complete login with your account (and any Cloudflare or 2FA checks).
-3. Once the main prompt interface appears, return to the terminal and press `[Enter]`.
+2. Log into your account and complete any verification challenges.
+3. Once the main prompt interface appears, return to the console and press **[Enter]**.
 4. Your authenticated session is saved to `./user_data/`. You will not need to log in again.
 
-### Step 2: Start the API Server
-Launch the FastAPI server using the entry point:
+---
+
+### 3. Start the API Server
+Launch the server with the 1-click launcher:
 
 ```powershell
 python run.py
 ```
 
-Default endpoints:
-- API Server: `http://127.0.0.1:8088`
-- OpenAI Base URL: `http://127.0.0.1:8088/v1`
-- Interactive OpenAPI Docs: `http://127.0.0.1:8088/docs`
-- Health Status: `http://127.0.0.1:8088/api/status`
+- **OpenAI Base URL**: `http://127.0.0.1:8088/v1`
+- **Interactive Swagger Docs**: `http://127.0.0.1:8088/docs`
+- **Health / Status Check**: `http://127.0.0.1:8088/api/status`
 
 ---
 
-## Integration and Usage
+## Code Examples
 
-### 1. Official OpenAI Python SDK
-Set `base_url` to `http://127.0.0.1:8088/v1`. Any valid `api_key` string can be supplied since authentication is handled locally.
+### 1. Standard OpenAI SDK Drop-In
+Point `base_url` to `http://127.0.0.1:8088/v1`:
 
 ```python
 from openai import OpenAI
@@ -137,8 +193,8 @@ client = OpenAI(
 response = client.chat.completions.create(
     model="chatgpt",
     messages=[
-        {"role": "system", "content": "You are a concise technical writer."},
-        {"role": "user", "content": "Explain asynchronous programming in two sentences."}
+        {"role": "system", "content": "You are a senior systems architect."},
+        {"role": "user", "content": "Explain event-driven architecture in two sentences."}
     ]
 )
 
@@ -147,8 +203,8 @@ print(response.choices[0].message.content)
 
 ---
 
-### 2. Structured Function Calling (Tool Calls)
-Define functions using standard JSON schema specifications:
+### 2. Structured Function Calling (Tools)
+Pass standard OpenAI tool definitions:
 
 ```python
 from openai import OpenAI
@@ -159,14 +215,14 @@ tools = [
     {
         "type": "function",
         "function": {
-            "name": "get_stock_price",
-            "description": "Fetch current trading price for a stock ticker symbol.",
+            "name": "query_database",
+            "description": "Execute a read-only SQL query against the metrics database.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "ticker": {"type": "string", "description": "Ticker symbol, e.g. NVDA, MSFT"}
+                    "query": {"type": "string", "description": "SQL query string"}
                 },
-                "required": ["ticker"]
+                "required": ["query"]
             }
         }
     }
@@ -174,29 +230,27 @@ tools = [
 
 response = client.chat.completions.create(
     model="chatgpt",
-    messages=[
-        {"role": "user", "content": "What is the current stock price of Microsoft (MSFT)?"}
-    ],
+    messages=[{"role": "user", "content": "What was our highest latency service yesterday?"}],
     tools=tools
 )
 
 choice = response.choices[0]
 if choice.finish_reason == "tool_calls":
     for tool_call in choice.message.tool_calls:
-        print(f"Function: {tool_call.function.name}")
-        print(f"Arguments: {tool_call.function.arguments}")
+        print(f"Call Function: {tool_call.function.name}")
+        print(f"Arguments:     {tool_call.function.arguments}")
 ```
 
 ---
 
 ### 3. Native REST API (`/api/chat`)
-For applications needing direct access to UI toggles, citations, or thought traces:
+Access native feature toggles directly via HTTP:
 
 ```bash
 curl -X POST http://127.0.0.1:8088/api/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "Summarize latest developments in solid-state battery research.",
+    "prompt": "Evaluate the stability of perovskite solar cells under high humidity.",
     "think": true,
     "web_search": true,
     "deep_research": false,
@@ -205,59 +259,23 @@ curl -X POST http://127.0.0.1:8088/api/chat \
   }'
 ```
 
-Response schema:
-```json
-{
-  "response": "Solid-state battery research in 2025-2026 has focused on...",
-  "thought_process": "Searching academic preprints and recent battery symposiums...",
-  "sources": [
-    "https://example.com/battery-research-2025"
-  ],
-  "model": "chatgpt",
-  "finish_reason": "stop"
-}
-```
-
 ---
 
 ## Test Suite
 
-All test scripts are located in [`tests/`](file:///d:/chatgpt_api/tests) and can be executed independently.
+All tests reside in [`tests/`](file:///d:/chatgpt_api/tests) and can be executed independently:
 
-### Interactive CLI Client
-Tests manual prompt execution, attachments, and toggle behaviors:
 ```powershell
-# Standard prompt
-python tests/test_client.py "Explain gravitational lensing."
+# Interactive CLI client with toggle flags
+python tests/test_client.py "Explain quantum entanglement" --think
 
-# Reasoning / Think Mode
-python tests/test_client.py "Solve this scheduling puzzle..." --think
-
-# Live Web Search
-python tests/test_client.py "What are the latest semiconductor news headlines?" --search
-
-# File Attachment
-python tests/test_client.py "Analyze this log file" --file "path/to/logfile.txt"
-
-# New Session
-python tests/test_client.py "Start fresh session" --new
-```
-
-### OpenAI SDK Compatibility Test
-Validates models listing and basic chat completion:
-```powershell
+# Standard OpenAI Python SDK verification
 python tests/test_openai_sdk.py
-```
 
-### System Instruction & Function Calling Test
-Validates prompt persona enforcement and structured tool generation:
-```powershell
+# System instruction and tool calling verification
 python tests/test_system_and_tools.py
-```
 
-### Multi-Turn Autonomous Agent Loop Test
-Simulates an autonomous cybersecurity incident responder that queries local Python functions over multiple conversation turns to produce a synthesized investigation report:
-```powershell
+# Full autonomous multi-turn agent loop with local Python execution
 python tests/test_full_agent_loop.py
 ```
 
@@ -265,49 +283,32 @@ python tests/test_full_agent_loop.py
 
 ## Configuration Reference
 
-Configuration is managed via [`.env`](file:///d:/chatgpt_api/.env) with the following parameters:
+Settings in [`.env`](file:///d:/chatgpt_api/.env):
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `HOST` | string | `127.0.0.1` | Network interface to bind the API server. |
+| `HOST` | string | `127.0.0.1` | Host address to bind the API server. |
 | `PORT` | integer | `8088` | Port number for the API server. |
-| `HEADLESS` | boolean | `false` | Run browser headlessly (`true`) or visibly (`false`). Visible mode is recommended to avoid Cloudflare bot detection. |
-| `BROWSER_CHANNEL` | string | `chrome` | Browser channel (`chrome` uses local Chrome, falls back to Playwright Chromium). |
-| `TIMEOUT_SECONDS` | integer | `180` | Maximum timeout in seconds per completion request. |
+| `HEADLESS` | boolean | `false` | Run browser visibly (`false`) or headlessly (`true`). Visible mode is recommended to prevent Cloudflare challenges. |
+| `BROWSER_CHANNEL` | string | `chrome` | Browser binary channel (`chrome` uses local Chrome, falls back to Chromium). |
+| `TIMEOUT_SECONDS` | integer | `180` | Request timeout ceiling in seconds. |
 
 ---
 
 ## Background Throttling Prevention
 
-Modern operating systems throttle resource allocation to background and minimized browser windows, which can pause JavaScript execution and network streaming. 
+Operating systems throttle background Chromium processes when windows are minimized, which can cause web stream generation to pause. 
 
-To ensure consistent performance during long generations, the browser context initializes with the following Chromium command-line flags:
+Chat2API initializes Chromium with OS-level flags in [`core/browser_manager.py`](file:///d:/chatgpt_api/core/browser_manager.py) to prevent throttling:
 - `--disable-background-timer-throttling`
 - `--disable-backgrounding-occluded-windows`
 - `--disable-renderer-backgrounding`
 - `--disable-component-update`
 
-The browser window may be minimized or placed on an alternate virtual desktop without interrupting active completions.
-
----
-
-## Troubleshooting
-
-### Browser authentication expired
-If the server returns status errors indicating an unauthenticated state, re-run:
-```powershell
-python login_helper.py
-```
-Log in again and press `[Enter]` to update the session files in `./user_data/`.
-
-### Cloudflare verification prompts
-If Cloudflare presents a verification challenge, ensure `HEADLESS=false` in `.env`. Complete the verification manually once in the visible browser; the state will persist for subsequent requests.
-
-### Port conflict
-If port 8088 is occupied by another process, update `PORT` in `.env` to any available port (e.g., `8090`).
+The browser window can remain minimized without slowing down active requests.
 
 ---
 
 ## License
 
-MIT License. Developed for local automation, research, and self-hosted AI agent development.
+MIT License. Developed for local development, research, and self-hosted AI agent workflows.
