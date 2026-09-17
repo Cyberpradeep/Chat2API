@@ -1,4 +1,4 @@
-# Chat2API: Free ChatGPT-to-OpenAI API Bridge (v2.0)
+# ZeroKey: Free ChatGPT-to-OpenAI API Bridge (v2.0)
 
 [![Status](https://img.shields.io/badge/Status-Operational-green.svg)]()
 [![API Spec](https://img.shields.io/badge/API-OpenAI%20v1%20Compatible-blue.svg)]()
@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)]()
 
 > **Quick Summary**  
-> Chat2API turns your personal ChatGPT web subscription into a **100% free, unlimited, local OpenAI-compatible API key** (`http://127.0.0.1:8088/v1`).  
+> ZeroKey turns your personal ChatGPT web subscription into a **100% free, unlimited, local OpenAI-compatible API key** (`http://127.0.0.1:8088/v1`).  
 > Point any Python script, AI agent framework (LangChain, AutoGen, CrewAI), or IDE assistant directly to localhost and execute prompts with zero per-token cost, full privacy, system prompt persistence, and structured tool calling.
 
 ---
@@ -18,7 +18,7 @@ When building AI apps, developers typically face two obstacles:
 1. **Paid OpenAI API keys** incur recurring per-token fees that escalate quickly during multi-turn agent loops or large document processing.
 2. **ChatGPT web accounts** offer unlimited usage, but do not provide an API key for custom code or third-party agent tools.
 
-**Chat2API bridges this gap.** It runs a persistent, automated Playwright Chromium engine on your machine. When your code sends an OpenAI request to `http://127.0.0.1:8088/v1`, Chat2API drives your local ChatGPT session in the background and returns structured, standardized OpenAI responses.
+**ZeroKey bridges this gap.** It runs a persistent, automated Playwright Chromium engine on your machine. When your code sends an OpenAI request to `http://127.0.0.1:8088/v1`, ZeroKey drives your local ChatGPT session in the background and returns structured, standardized OpenAI responses.
 
 ---
 
@@ -29,7 +29,7 @@ When building AI apps, developers typically face two obstacles:
 |                             YOUR LOCAL MACHINE                                |
 |                                                                               |
 |  +--------------------------+                   +--------------------------+  |
-|  |   Your Application /     |                   |    Chat2API Bridge       |  |
+|  |   Your Application /     |                   |    ZeroKey Bridge        |  |
 |  |   AI Agent Framework     |                   |    (FastAPI - Port 8088) |  |
 |  |                          |                   |                          |  |
 |  | - Python OpenAI SDK      | === HTTP /v1 ===> | - Standard /v1 Endpoints |  |
@@ -60,7 +60,7 @@ When building AI apps, developers typically face two obstacles:
 sequenceDiagram
     autonumber
     participant App as Your App / AI Agent
-    participant Bridge as Chat2API (/v1 Server)
+    participant Bridge as ZeroKey (/v1 Server)
     participant Browser as Local Chromium Engine
     participant Web as ChatGPT Web
 
@@ -88,7 +88,7 @@ sequenceDiagram
 
 ## Key Advantages at a Glance
 
-| Feature | Official Paid API | Cloud Relays (e.g. ApiBeam) | Chat2API (v2.0) |
+| Feature | Official Paid API | Cloud Relays (e.g. ApiBeam) | ZeroKey (v2.0) |
 | :--- | :--- | :--- | :--- |
 | **Token Cost** | Pay-per-token ($$$) | Subscription fee | **$0 (Uses your web account)** |
 | **Data Privacy** | Cloud hosted | Routed through third party | **100% Local (127.0.0.1)** |
@@ -299,7 +299,7 @@ Settings in [`.env`](file:///d:/chatgpt_api/.env):
 
 Operating systems throttle background Chromium processes when windows are minimized, which can cause web stream generation to pause. 
 
-Chat2API initializes Chromium with OS-level flags in [`core/browser_manager.py`](file:///d:/chatgpt_api/core/browser_manager.py) to prevent throttling:
+ZeroKey initializes Chromium with OS-level flags in [`core/browser_manager.py`](file:///d:/chatgpt_api/core/browser_manager.py) to prevent throttling:
 - `--disable-background-timer-throttling`
 - `--disable-backgrounding-occluded-windows`
 - `--disable-renderer-backgrounding`
