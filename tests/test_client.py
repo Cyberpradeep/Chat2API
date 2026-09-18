@@ -19,6 +19,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import argparse
 import httpx
 from config.settings import settings
+from config.logger import get_logger
+
+logger = get_logger("test_client")
 
 BASE_URL = f"http://{settings.HOST}:{settings.PORT}"
 
@@ -30,6 +33,7 @@ def test_api(
     files: list = None,
     new_chat: bool = False
 ):
+    logger.info("Starting test_client request", prompt=prompt, think=think, web_search=web_search, files=files)
     print("=" * 65)
     print("  ChatGPT Modular Engine - Test Client")
     print("=" * 65)

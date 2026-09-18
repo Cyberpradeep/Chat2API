@@ -15,6 +15,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import settings
+from config.logger import get_logger
+
+logger = get_logger("test_openai_sdk")
 
 try:
     from openai import OpenAI
@@ -24,6 +27,7 @@ except ImportError:
 
 def main():
     base_url = f"http://{settings.HOST}:{settings.PORT}/v1"
+    logger.info("Starting OpenAI SDK compatibility test", base_url=base_url)
     print("=" * 65)
     print("  Testing Drop-In OpenAI SDK Compatibility")
     print(f"  Target: {base_url}")
@@ -38,8 +42,11 @@ def main():
     print("\n1. Calling client.models.list() ...")
     try:
         models = client.models.list()
-        print(f"   Available models: {[m.id for m in models.data]}")
+        model_ids = [m.id for m in models.data]
+        logger.info("Models endpoint succeeded", models=model_ids)
+        print(f"   Available models: {model_ids}")
     except Exception as e:
+        logger.error("Error listing models", error=str(e), exc_info=True)
         print(f"   [X] Error listing models: {e}")
 
     # 2. Test Chat Completions
@@ -51,14 +58,17 @@ def main():
                 {"role": "user", "content": "Explain gravity in exactly one sentence."}
             ]
         )
+        content = response.choices[0].message.content
+        logger.info("Completions endpoint succeeded", content=content)
         print("\n" + "=" * 65)
         print("  OPENAI SDK RESPONSE:")
         print("=" * 65)
-        print(response.choices[0].message.content)
+        print(content)
         print("=" * 65)
         print("[+] OpenAI SDK compatibility verified successfully!")
     except Exception as e:
-        print(f"\n[X] Error during completion: {e}")
+        logger.error("Chat completions failed", error=str(e), exc_info=True)
+        print(f"[X] Chat completions failed: {e}")
 
 if __name__ == "__main__":
     main()

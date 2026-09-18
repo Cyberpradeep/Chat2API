@@ -5,13 +5,13 @@ Provides persistent session management, anti-throttling flags, and stealth capab
 
 import os
 import asyncio
-import logging
 from typing import Optional
 from playwright.async_api import async_playwright, Playwright, BrowserContext, Page
 from config.settings import settings
+from config.logger import get_logger
 from config import selectors
 
-logger = logging.getLogger("browser_manager")
+logger = get_logger("browser_manager")
 
 class BrowserManager:
     def __init__(self, user_data_dir: str = settings.USER_DATA_DIR, headless: bool = settings.HEADLESS):

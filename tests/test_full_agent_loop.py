@@ -18,6 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from openai import OpenAI
 from config.settings import settings
+from config.logger import get_logger
+
+logger = get_logger("secops_agent")
 
 # -------------------------------------------------------------
 # 1. MOCK TOOL IMPLEMENTATIONS (Python Runtime)
@@ -25,7 +28,7 @@ from config.settings import settings
 
 def check_server_health(service_name: str) -> Dict[str, Any]:
     """Simulates checking microservice metrics."""
-    print(f"   [EXEC] Running Python function: check_server_health('{service_name}')")
+    logger.info("Executing mock tool: check_server_health", service_name=service_name)
     return {
         "service": service_name,
         "status": "online",
@@ -37,7 +40,7 @@ def check_server_health(service_name: str) -> Dict[str, Any]:
 
 def check_threat_level(ip_address: str) -> Dict[str, Any]:
     """Simulates querying an IP threat intelligence database."""
-    print(f"   [EXEC] Running Python function: check_threat_level('{ip_address}')")
+    logger.info("Executing mock tool: check_threat_level", ip_address=ip_address)
     return {
         "ip": ip_address,
         "reputation_score": 94,
@@ -98,6 +101,7 @@ TOOLS = [
 
 def run_agent_test():
     base_url = f"http://{settings.HOST}:{settings.PORT}/v1"
+    logger.info("Starting SecOps agent test session", base_url=base_url)
     print("=" * 70)
     print("  FULL-FLEDGED AUTONOMOUS AI AGENT LOOP TEST")
     print(f"  Target Server: {base_url}")
@@ -127,6 +131,7 @@ def run_agent_test():
         {"role": "user", "content": user_query}
     ]
 
+    logger.info("SecOps agent initialized", persona="CyberSentinel", user_query=user_query)
     print("\n[STEP 0: Agent Initialized]")
     print(f"System Persona: CyberSentinel")
     print(f"User Goal:      {user_query}\n")
@@ -135,6 +140,7 @@ def run_agent_test():
     turn = 1
 
     while turn <= max_turns:
+        logger.info("SecOps turn starting", turn=turn, max_turns=max_turns, history_len=len(messages))
         print(f"\n--- [AGENT ITERATION {turn}] Calling Model ---")
         start_t = time.time()
 
@@ -147,12 +153,15 @@ def run_agent_test():
         choice = response.choices[0]
         finish_reason = choice.finish_reason
 
+        logger.info("SecOps response received", turn=turn, latency_seconds=duration, finish_reason=finish_reason)
         print(f" * Duration:      {duration}s")
         print(f" * Finish Reason: {finish_reason}")
 
         # Case A: Agent decides to invoke tools
         if finish_reason == "tool_calls" and choice.message.tool_calls:
             tool_calls = choice.message.tool_calls
+            tool_names = [tc.function.name for tc in tool_calls]
+            logger.info("Agent requested tool calls", count=len(tool_calls), tools=tool_names)
             print(f" * Agent Action:  Requested {len(tool_calls)} tool call(s)")
 
             # Record assistant turn with tool calls
@@ -176,12 +185,16 @@ def run_agent_test():
             for tc in tool_calls:
                 fn_name = tc.function.name
                 fn_args = json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else tc.function.arguments
+                logger.info("Executing agent tool", call_id=tc.id, tool=fn_name, arguments=fn_args)
                 print(f"   -> Tool:      {fn_name}({fn_args})")
 
                 if fn_name in TOOL_REGISTRY:
                     fn_result = TOOL_REGISTRY[fn_name](**fn_args)
                 else:
+                    logger.error("Tool not registered", tool=fn_name)
                     fn_result = {"error": f"Tool '{fn_name}' not registered"}
+
+                logger.info("Tool executed result", call_id=tc.id, tool=fn_name, result=fn_result)
 
                 # Append tool result to conversation history
                 messages.append({
@@ -196,6 +209,7 @@ def run_agent_test():
         # Case B: Agent delivers final synthesized answer
         elif finish_reason == "stop":
             final_content = choice.message.content
+            logger.info("SecOps final report delivered", turns=turn, chars=len(final_content) if final_content else 0)
             print("\n" + "=" * 70)
             print("  AGENT FINAL REPORT DELIVERED:")
             print("=" * 70)
@@ -205,10 +219,12 @@ def run_agent_test():
             return True
 
         else:
+            logger.warning("Unexpected finish reason", finish_reason=finish_reason, content=choice.message.content)
             print(f"[!] Unexpected finish_reason: {finish_reason}")
             print(f"    Message: {choice.message.content}")
             break
 
+    logger.warning("Agent exceeded maximum iterations", max_turns=max_turns)
     print("\n[X] Agent Loop exceeded maximum iterations without completing.")
     return False
 

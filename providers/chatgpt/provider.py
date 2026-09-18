@@ -5,8 +5,8 @@ file attachments, and response extraction.
 """
 
 import asyncio
-import logging
 from typing import Dict, Any, List, Optional
+from config.logger import get_logger
 from providers.base_provider import BaseProvider
 from core.browser_manager import BrowserManager
 from core.file_uploader import FileUploader
@@ -15,7 +15,7 @@ from config import selectors
 from . import toggles
 from . import extractor
 
-logger = logging.getLogger("chatgpt_provider")
+logger = get_logger("chatgpt_provider")
 
 class ChatGPTProvider(BaseProvider):
     def __init__(self, browser_manager: Optional[BrowserManager] = None):

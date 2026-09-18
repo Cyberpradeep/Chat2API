@@ -2,9 +2,10 @@
 FastAPI route definitions for native endpoints and OpenAI SDK compatibility.
 """
 
-import logging
-from typing import List, Dict, Any
+from typing import Any
+from ast import Dict
 from fastapi import APIRouter, HTTPException, status
+from config.logger import get_logger
 from core import prompt_compiler
 from providers import get_provider
 from server.schemas import (
@@ -12,7 +13,7 @@ from server.schemas import (
     OpenAICompletionRequest, OpenAICompletionResponse, OpenAIChoice
 )
 
-logger = logging.getLogger("routes")
+logger = get_logger("server.routes")
 router = APIRouter()
 provider = get_provider("chatgpt")
 
@@ -72,16 +73,24 @@ async def chat(request: ChatRequest):
             timeout_seconds=request.timeout_seconds
         )
         return result
+    except HTTPException:
+        raise
     except TimeoutError as te:
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail=f"Generation timed out: {str(te)}"
         )
     except Exception as e:
+        err_msg = str(e)
         logger.exception("Error processing prompt")
+        if any(k in err_msg.lower() for k in ("limit", "rate", "capacity", "too many")):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=err_msg
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Automation error: {str(e)}"
+            detail=f"Automation error: {err_msg}"
         )
 
 
@@ -123,13 +132,29 @@ async def openai_chat_completions(request: OpenAICompletionRequest):
                 detail="No usable message content found in 'messages' array."
             )
 
+        # Auto-detect whether to start a clean chat session
+        is_new_chat = request.new_chat
+        if is_new_chat is None:
+            # If no prior assistant or tool turns exist, start clean
+            is_new_chat = not any(m.get("role") in ("assistant", "tool") for m in raw_msgs)
+
+        logger.info(
+            "Processing OpenAI chat completion",
+            model=request.model,
+            messages_count=len(request.messages),
+            tools_count=len(request.tools or []),
+            think=bool(request.think),
+            is_new_chat=is_new_chat
+        )
+
         # 2. Call provider
         result = await provider.send_prompt(
             prompt=compiled_prompt,
             think=bool(request.think),
             web_search=bool(request.web_search),
             deep_research=bool(request.deep_research),
-            files=files if files else None
+            files=files if files else None,
+            new_chat=is_new_chat
         )
 
         # 3. Format OpenAI response
@@ -148,6 +173,14 @@ async def openai_chat_completions(request: OpenAICompletionRequest):
         if result.get("thought_process"):
             message_payload["reasoning_content"] = result["thought_process"]
 
+        logger.info(
+            "OpenAI chat completion completed",
+            finish_reason=finish_reason,
+            tool_calls_count=len(result.get("tool_calls") or []),
+            has_thought=bool(result.get("thought_process")),
+            response_chars=len(result.get("response") or "")
+        )
+
         return OpenAICompletionResponse(
             model=request.model or "chatgpt",
             choices=[
@@ -158,9 +191,17 @@ async def openai_chat_completions(request: OpenAICompletionRequest):
                 )
             ]
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        err_msg = str(e)
         logger.exception("Error in OpenAI chat completions endpoint")
+        if any(k in err_msg.lower() for k in ("limit", "rate", "capacity", "too many")):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=err_msg
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail=err_msg
         )

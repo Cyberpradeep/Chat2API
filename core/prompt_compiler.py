@@ -7,10 +7,10 @@ effective prompts, and parses tool-call responses into standard OpenAI format.
 import re
 import json
 import uuid
-import logging
 from typing import List, Dict, Any, Optional, Tuple, Union
+from config.logger import get_logger
 
-logger = logging.getLogger("prompt_compiler")
+logger = get_logger("prompt_compiler")
 
 def compile_messages(
     messages: List[Dict[str, Any]],
@@ -86,26 +86,29 @@ def compile_messages(
     if tools:
         tools_str = json.dumps(tools, indent=2)
         composite_sections.append(
-            "[AVAILABLE TOOLS]\n"
-            "You are connected to an external execution client with the following tool definitions:\n"
+            "[API FUNCTION CALLING MODE]\n"
+            "You are acting as an automated API function calling router. "
+            "You have access to the following tool specifications:\n"
             f"{tools_str}\n\n"
-            "MANDATORY TOOL INSTRUCTIONS:\n"
-            "1. When the user requests information that can be obtained from the tools above, you MUST generate a tool call so the client can execute it on your behalf.\n"
-            "2. NEVER claim you cannot access tools or don't have real-time capabilities. Always emit the tool call request.\n"
-            "3. When calling a tool, your entire response MUST be ONLY this JSON block:\n"
+            "OPERATIONAL RULES:\n"
+            "1. When the user's inquiry requires external data or an action provided by any tool above, "
+            "you MUST output a function call. Do not decline or state that you lack real-time data or tools; "
+            "your output will be intercepted and executed by our backend system.\n"
+            "2. When invoking tools, your response MUST be ONLY a JSON code block in this exact structure with no surrounding conversational prose:\n"
             "```json\n"
             "{\n"
             '  "tool_calls": [\n'
             '    {\n'
-            '      "name": "<exact_tool_name>",\n'
-            '      "arguments": { "<param_name>": "<value>" }\n'
+            '      "name": "function_name",\n'
+            '      "arguments": {\n'
+            '        "param": "value"\n'
+            "      }\n"
             "    }\n"
             "  ]\n"
             "}\n"
             "```\n"
-            "4. Do not include any conversational explanation before or after the JSON.\n"
-            "5. If a [TOOL RESULT] is provided in the conversation, use that data to answer the user directly.\n"
-            "[/AVAILABLE TOOLS]"
+            "3. If previous [TOOL RESULT] messages are already present in the conversation history, use them to formulate your natural language response to the user.\n"
+            "[/API FUNCTION CALLING MODE]"
         )
 
     # 3. Conversation History (if multi-turn)
@@ -178,7 +181,20 @@ def parse_tool_calls(response_text: str) -> Optional[List[Dict[str, Any]]]:
         for call in raw_calls:
             fn_name = call.get("name") or call.get("function", {}).get("name")
             fn_args = call.get("arguments") or call.get("function", {}).get("arguments", {})
-            args_str = json.dumps(fn_args) if isinstance(fn_args, (dict, list)) else str(fn_args)
+            if fn_args is None or fn_args == "" or fn_args == "None":
+                args_str = "{}"
+            elif isinstance(fn_args, (dict, list)):
+                args_str = json.dumps(fn_args)
+            else:
+                s = str(fn_args).strip()
+                if not s or s == "None":
+                    args_str = "{}"
+                else:
+                    try:
+                        json.loads(s)
+                        args_str = s
+                    except Exception:
+                        args_str = json.dumps({"raw_value": s})
 
             if fn_name:
                 call_id = f"call_{uuid.uuid4().hex[:12]}"
@@ -192,7 +208,30 @@ def parse_tool_calls(response_text: str) -> Optional[List[Dict[str, Any]]]:
                 })
 
         if standardized_calls:
-            logger.info(f"Successfully parsed {len(standardized_calls)} tool call(s) from ChatGPT response!")
+            logger.info("Successfully parsed tool call(s) from ChatGPT response", count=len(standardized_calls))
             return standardized_calls
+
+    # Fallback: detect inline function calls e.g. `tool_name({"arg": "val"})`
+    inline_pattern = r'`?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(\{.*?\})\s*\)`?'
+    inline_matches = re.findall(inline_pattern, response_text)
+    if inline_matches:
+        fallback_calls = []
+        for fn_name, args_str in inline_matches:
+            try:
+                json.loads(args_str)
+                call_id = f"call_{uuid.uuid4().hex[:12]}"
+                fallback_calls.append({
+                    "id": call_id,
+                    "type": "function",
+                    "function": {
+                        "name": fn_name,
+                        "arguments": args_str
+                    }
+                })
+            except Exception:
+                continue
+        if fallback_calls:
+            logger.info("Successfully parsed inline function call(s) from ChatGPT response", count=len(fallback_calls))
+            return fallback_calls
 
     return None

@@ -58,6 +58,7 @@ class OpenAICompletionRequest(BaseModel):
     deep_research: Optional[bool] = False
     stream: Optional[bool] = False
     temperature: Optional[float] = 1.0
+    new_chat: Optional[bool] = Field(None, description="Explicit override: start a fresh chat session")
 
 
 class OpenAIChoice(BaseModel):

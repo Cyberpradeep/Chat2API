@@ -7,13 +7,13 @@ import os
 import re
 import base64
 import asyncio
-import logging
 from typing import List
 from playwright.async_api import Page
 from config.settings import settings
 from config import selectors
+from config.logger import get_logger
 
-logger = logging.getLogger("file_uploader")
+logger = get_logger("file_uploader")
 
 class FileUploader:
     def __init__(self, temp_dir: str = settings.TEMP_UPLOADS_DIR):

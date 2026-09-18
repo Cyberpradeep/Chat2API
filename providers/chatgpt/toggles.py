@@ -4,11 +4,11 @@ Controls the inline Think button and the '+' menu items (Web search, Deep resear
 """
 
 import asyncio
-import logging
 from playwright.async_api import Page
 from config import selectors
+from config.logger import get_logger
 
-logger = logging.getLogger("chatgpt_toggles")
+logger = get_logger("chatgpt_toggles")
 
 async def set_think_mode(page: Page, enable: bool):
     """

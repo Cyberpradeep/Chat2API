@@ -112,3 +112,14 @@ DISMISS_MODALS = [
     'button:has-text("Accept all")',
     'button:has-text("Reject non-essential")'
 ]
+
+# Error Banners & Rate Limit Notices
+ERROR_BANNERS = [
+    'div[data-testid="error-message"]',
+    'div.text-token-text-error',
+    'div[role="alert"]',
+    'div:has-text("You\'ve reached our limit")',
+    'div:has-text("Something went wrong")',
+    'div:has-text("Conversation not found")',
+    'div:has-text("Too many requests")'
+]

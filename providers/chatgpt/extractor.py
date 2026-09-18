@@ -4,13 +4,13 @@ Captures generated markdown prose, collapsible thought processes, and web search
 """
 
 import asyncio
-import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from markdownify import markdownify as md
 from playwright.async_api import Page
 from config import selectors
+from config.logger import get_logger
 
-logger = logging.getLogger("chatgpt_extractor")
+logger = get_logger("chatgpt_extractor")
 
 async def get_assistant_turn_count(page: Page) -> int:
     """Counts how many assistant turns exist on the page."""
@@ -24,17 +24,37 @@ async def get_assistant_turn_count(page: Page) -> int:
     return 0
 
 
+async def check_ui_error(page: Page) -> Optional[str]:
+    """Detects visible ChatGPT UI error or rate-limit messages."""
+    for sel in getattr(selectors, "ERROR_BANNERS", []):
+        try:
+            elem = page.locator(sel).first
+            if await elem.is_visible(timeout=100):
+                text = (await elem.inner_text()).strip()
+                if text and len(text) > 4:
+                    return text
+        except Exception:
+            continue
+    return None
+
+
 async def wait_for_completion(page: Page, previous_count: int, timeout_seconds: int = 180) -> Dict[str, Any]:
     """
     Watches generation lifecycle:
     1. Detects start via stop button appearance or count increment.
     2. Waits for stop button detachment and text stabilization.
+    3. Aborts immediately if a rate-limit or UI error banner is displayed.
     """
     start_time = asyncio.get_event_loop().time()
 
     # Phase 1: Wait for generation to begin
     generation_started = False
     while (asyncio.get_event_loop().time() - start_time) < 20:
+        err = await check_ui_error(page)
+        if err:
+            logger.error("ChatGPT UI error banner detected", error=err)
+            raise RuntimeError(f"ChatGPT Web Error: {err}")
+
         for stop_sel in selectors.STOP_BUTTON:
             try:
                 if await page.locator(stop_sel).first.is_visible(timeout=200):
@@ -52,13 +72,18 @@ async def wait_for_completion(page: Page, previous_count: int, timeout_seconds: 
 
         await asyncio.sleep(0.3)
 
-    logger.info(f"Generation activity detected: {generation_started}")
+    logger.info("Generation activity check", started=generation_started, previous_turns=previous_count)
 
     # Phase 2: Wait for generation completion and text stabilization
     last_text = ""
     stable_count = 0
 
     while (asyncio.get_event_loop().time() - start_time) < timeout_seconds:
+        err = await check_ui_error(page)
+        if err:
+            logger.error("ChatGPT UI error banner detected during generation", error=err)
+            raise RuntimeError(f"ChatGPT Web Error: {err}")
+
         # Check if stop button is present
         is_generating = False
         for stop_sel in selectors.STOP_BUTTON:
@@ -75,8 +100,8 @@ async def wait_for_completion(page: Page, previous_count: int, timeout_seconds: 
         if not is_generating and len(current_text) > 0:
             if current_text == last_text:
                 stable_count += 1
-                if stable_count >= 3:  # Unchanged for ~1.5s after stop button detached
-                    logger.info("Generation confirmed complete.")
+                if stable_count >= 2:  # Confirmed unchanged after stop button detached
+                    logger.info("Generation confirmed complete", chars=len(current_text), stable_count=stable_count)
                     return current_data
             else:
                 stable_count = 0
@@ -85,7 +110,7 @@ async def wait_for_completion(page: Page, previous_count: int, timeout_seconds: 
         await asyncio.sleep(0.5)
 
     if last_text:
-        logger.warning("Generation timed out, returning last captured content.")
+        logger.warning("Generation timed out, returning last captured content", chars=len(last_text))
         return await extract_latest_response(page)
 
     raise TimeoutError(f"No response received from ChatGPT within {timeout_seconds} seconds.")

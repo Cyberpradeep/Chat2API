@@ -18,5 +18,7 @@ class Settings:
     TIMEOUT_SECONDS: int = int(os.getenv("TIMEOUT_SECONDS", "180"))
     USER_DATA_DIR: str = os.getenv("USER_DATA_DIR", str(BASE_DIR / "user_data"))
     TEMP_UPLOADS_DIR: str = str(BASE_DIR / "temp_uploads")
+    LOGS_DIR: str = os.getenv("LOGS_DIR", str(BASE_DIR / "logs"))
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
 
 settings = Settings()
